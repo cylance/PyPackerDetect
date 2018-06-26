@@ -13,6 +13,7 @@ from NonStandardSectionNameDetector import *
 DEFAULT_CONFIG = {
 	"LowImportThreshold": 10,
 	"NonStandardSectionThreshold": 3,
+	"BadSectionNameThreshold": 2,
 	"OnlyPEIDEntryPointSignatures": True,
 	# large database has more than 3x as many signatures, but many are for non-packers
 	# and will create false positives. we can move signatures from the long list to the short

@@ -8,10 +8,13 @@ class LowImportCountDetector(PackerDetector):
 	def Run(self, pe, report): # TODO test
 		if (not self.config["CheckForLowImportCount"]):
 			return
-		importCount = 0
-		for library in pe.DIRECTORY_ENTRY_IMPORT:
-			if (GetCleanStringFromBytes(library.dll).lower() == "mscoree.dll"):
-				return # .NET assembly, counting imports is misleading
-			importCount += len(library.imports)
-		if (importCount <= self.config["LowImportThreshold"]):
-			report.IndicateDetection("Too few imports (total: %d)" % importCount)
+		try:
+			importCount = 0
+			for library in pe.DIRECTORY_ENTRY_IMPORT:
+				if (GetCleanStringFromBytes(library.dll).lower() == "mscoree.dll"):
+					return # .NET assembly, counting imports is misleading
+				importCount += len(library.imports)
+			if (importCount <= self.config["LowImportThreshold"]):
+				report.IndicateDetection("Too few imports (total: %d)" % importCount)
+		except AttributeError:
+			pass

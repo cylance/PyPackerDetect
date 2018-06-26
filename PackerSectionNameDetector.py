@@ -30,6 +30,9 @@ class PackerSectionNameDetector(PackerDetector):
 		if (not self.config["CheckForPackerSections"]):
 			return
 		for section in pe.sections:
-			secName = GetCleanSectionName(section)
-			if (secName in self.packerSectionNames):
-				report.IndicateDetection("Section name '%s' matches known packer: [%s]" % (secName, self.packerSectionNames[secName]))
+			try:
+				secName = GetCleanSectionName(section)
+				if (secName in self.packerSectionNames):
+					report.IndicateDetection("Section name '%s' matches known packer: [%s]" % (secName, self.packerSectionNames[secName]))
+			except UnicodeDecodeError:
+				report.IndicateSuspicion("Section name with invalid characters")

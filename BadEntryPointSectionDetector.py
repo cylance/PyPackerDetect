@@ -6,7 +6,8 @@ class BadEntryPointSectionDetector(PackerDetector):
 		super().__init__(config)
 		self.acceptableEntrySections = [".text"]
 		self.alternativeEntrySections = [".code", "text", ".text0", ".text1", ".text2", ".text3"]
-		self.delphiBssSections = [".BSS", "BSS"]
+		self.driverEntrySection = ["INIT"]
+		self.delphiBssSections = [".BSS", "BSS", ".bss"]
 		self.delphiEntrySections = [".itext", "CODE"]
 
 	def Run(self, pe, report): # TODO test
@@ -21,10 +22,13 @@ class BadEntryPointSectionDetector(PackerDetector):
 		allSectionNames = []
 		entryPointSectionNames = []
 		for section in pe.sections:
-			secName = GetCleanSectionName(section)
-			allSectionNames.append(secName)
-			if (entryPoint >= section.VirtualAddress and entryPoint <= (section.VirtualAddress + section.Misc_VirtualSize)):
-				entryPointSectionNames.append(secName)
+			try:
+				secName = GetCleanSectionName(section)
+				allSectionNames.append(secName)
+				if (entryPoint >= section.VirtualAddress and entryPoint <= (section.VirtualAddress + section.Misc_VirtualSize)):
+					entryPointSectionNames.append(secName)
+			except UnicodeDecodeError:
+				report.IndicateSuspicion("Section name with invalid characters")
 
 		entryPointSectionCount = len(entryPointSectionNames)
 		if (entryPointSectionCount == 0):
@@ -42,8 +46,9 @@ class BadEntryPointSectionDetector(PackerDetector):
 					# normal entry section doesn't exist anywhere, so check for alternatives
 					badEpSec = not DoListsIntersect(self.alternativeEntrySections, entryPointSectionNames)
 				else:
-					# not delphi, not a known entry section, not an alternative section, bad
-					badEpSec = True
+					# not regular ep section, not a delphi entry section, not an alternative entry section, and regular entry section name exists,
+					# so the only possibility left is a driver entry section
+					badEpSec = not DoListsIntersect(self.driverEntrySection, entryPointSectionNames)
 
 				if (badEpSec):
 					report.IndicateDetection("Entry point 0x%x in irregular section(s): %s" % (entryPoint, FormatStringList(entryPointSectionNames)))
