@@ -27,15 +27,27 @@ DEFAULT_CONFIG = {
 	"CheckForNonStandardSections": True
 }
 
-
-def CheckForPackers(files, config=DEFAULT_CONFIG):
-	detectors = [
+def InitializeDetectors(config):
+	return [
 		PEIDDetector(config),
 		BadEntryPointSectionDetector(config),
 		LowImportCountDetector(config),
 		PackerSectionNameDetector(config),
 		NonStandardSectionNameDetector(config)
 	]
+
+
+def CheckForPackersInMemory(filedata, config=DEFAULT_CONFIG):
+	detectors = InitializeDetectors(config)
+
+	report = PackerReport(filedata)
+	pe = pefile.PE(data=filedata)
+	for detector in detectors:
+		detector.Run(pe, report)
+	return report
+
+def CheckForPackers(files, config=DEFAULT_CONFIG):
+	detectors = InitializeDetectors(config)
 
 	reports = {}
 	for file in files:
