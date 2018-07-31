@@ -87,9 +87,3 @@ if __name__ == "__main__":
 	reports = CheckForPackers(args.filenames, config)
 	for file, report in reports.items():
 		report.Print()
-
-"""
-	reports = CheckForPackers(['C:\\Code\\PyPackerDetect\\testfiles\\procexp_mimic_delphi.exe'])
-	for file, report in reports.items():
-		report.Print()
-"""

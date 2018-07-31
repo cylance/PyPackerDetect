@@ -11,11 +11,7 @@ def FormatStringList(strlist):
 	return ("'%s'" % "', '".join(strlist))
 
 def DoListsIntersect(l1, l2):
-	# really ghetto but who cares
-	combined = []
-	combined.extend(set(l1))
-	combined.extend(set(l2))
-	return (len(combined) > len(set(combined)))
+	return len(set(l1) & set(l2)) != 0
 
 def ExtendSysPathRelativeToScript(relpath):
 	sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + relpath)

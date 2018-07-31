@@ -12,7 +12,7 @@ class LowImportCountDetector(PackerDetector):
 			importCount = 0
 			for library in pe.DIRECTORY_ENTRY_IMPORT:
 				if (GetCleanStringFromBytes(library.dll).lower() == "mscoree.dll"):
-					return # .NET assembly, counting imports is misleading
+					return # .NET assembly, counting imports is misleading as they will have a low number
 				importCount += len(library.imports)
 			if (importCount <= self.config["LowImportThreshold"]):
 				report.IndicateDetection("Too few imports (total: %d)" % importCount)
