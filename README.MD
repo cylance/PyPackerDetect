@@ -1,10 +1,12 @@
 # PyPackerDetect
 
+## Overview
+
 A small python script/library to detect whether an executable is packed.
 
 This is one of many tools we use for dataset curation within the ARG team at Cylance. Accuracy is not perfect, but is sufficient in accomplishing what we need.
 
-Tested and devloped using Python 3.
+Tested and devloped using Python 3, but should also work on Python 2.7.
 
 [pefile](https://github.com/erocarrera/pefile) is used for PE parsing, found in `./deps/libpefile`.
 
@@ -28,3 +30,4 @@ Example usage is in `DetectPacker.py`. Can be run via command line.
 ## Resources
 
 Big thanks to [Hexacorn](http://www.hexacorn.com/blog/2016/12/15/pe-section-names-re-visited/), a good portion of the known PE section names come from there.
+

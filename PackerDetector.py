@@ -1,8 +1,8 @@
 from Utils import *
 
-class PackerDetector:
-	def __init__(self, config):
-		self.config = config
+class PackerDetector(object):
+    def __init__(self, config):
+        self.config = config
 
-	def Run(self, pe, report):
-		raise NotImplementedError
+    def Run(self, pe, report):
+        raise NotImplementedError

@@ -1,43 +1,48 @@
+from __future__ import print_function
 from Utils import *
 
-class PackerReport:
-	def __init__(self, name):
-		self.name = name
-		self.detections = 0
-		self.suspicions = 0
-		self.failed = False
-		self.error = ""
-		self.logs = []
 
-	def IndicateDetection(self, message):
-		self.logs.append("[DETECTION] %s" % message)
-		self.detections += 1
+def default_outfn(msg):
+        print(msg)
 
-	def IndicateSuspicion(self, message):
-		self.logs.append("[SUSPICION] %s" % message)
-		self.suspicions += 1
+class PackerReport(object):
+    def __init__(self, name):
+        self.name = name
+        self.detections = 0
+        self.suspicions = 0
+        self.failed = False
+        self.error = ""
+        self.logs = []
 
-	def IndicateParseFailed(self, message):
-		self.error = message
-		self.failed = True
+    def IndicateDetection(self, message):
+        self.logs.append("[DETECTION] %s" % message)
+        self.detections += 1
 
-	def GetDetections(self):
-		return self.detections
+    def IndicateSuspicion(self, message):
+        self.logs.append("[SUSPICION] %s" % message)
+        self.suspicions += 1
 
-	def GetSuspicions(self):
-		return self.suspicions
+    def IndicateParseFailed(self, message):
+        self.error = message
+        self.failed = True
 
-	def GetParseFailed(self):
-		return self.failed
+    def GetDetections(self):
+        return self.detections
 
-	def Print(self, outfn=print):
-		outfn("Packer report for: %s" % self.name)
-		if (self.failed):
-			outfn("\tError: %s" % self.error)
-		else:
-			outfn("\tDetections: %d" % self.detections)
-			outfn("\tSuspicions: %d" % self.suspicions)
-			outfn("\tLog:")
+    def GetSuspicions(self):
+        return self.suspicions
 
-			for log in self.logs:
-				outfn("\t\t%s" % log)
+    def GetParseFailed(self):
+        return self.failed
+
+    def Print(self, outfn=default_outfn):
+        outfn("Packer report for: %s" % self.name)
+        if (self.failed):
+            outfn("\tError: %s" % self.error)
+        else:
+            outfn("\tDetections: %d" % self.detections)
+            outfn("\tSuspicions: %d" % self.suspicions)
+            outfn("\tLog:")
+
+            for log in self.logs:
+                outfn("\t\t%s" % log)
