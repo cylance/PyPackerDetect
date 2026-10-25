@@ -70,3 +70,6 @@ target/
 .test
 tmp
 TODO
+
+# PEiD search-tree caches (rebuilt at runtime)
+src/pypackerdetect/db/.*.json

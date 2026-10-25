@@ -19,7 +19,7 @@ authors = [
 description = "Re-implementation and packaging of PyPackerDetect"
 license = {file = "LICENSE"}
 keywords = ["packing", "packed-executable", "packing-detection", "pe"]
-requires-python = ">=3.9,<4"
+requires-python = ">=3.10,<4"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
@@ -33,7 +33,7 @@ classifiers = [
 ]
 dependencies = [
   "pefile",
-  "peid>=2.3.1",
+  "peid>=2.4.0",
 ]
 dynamic = ["version"]
 

@@ -1,2 +1,2 @@
 pefile
-peid>=2.2.1
+peid>=2.4.0

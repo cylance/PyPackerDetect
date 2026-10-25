@@ -13,10 +13,17 @@ __all__ = ["PyPackerDetect"]
 @lru_cache
 def _real_section_names(path, logger=None, timeout=10):
     from subprocess import Popen, PIPE, TimeoutExpired
-    p, names = Popen(["objdump", "-h", path], stdout=PIPE, stderr=PIPE), []
+    try:
+        p, names = Popen(["objdump", "-h", path], stdout=PIPE, stderr=PIPE), []
+    except OSError as e:  # e.g. objdump is not installed
+        if logger:
+            logger.debug(f"objdump: {e}")
+        return
     try:
         out, err = p.communicate(timeout=timeout)
     except TimeoutExpired:
+        p.kill()
+        p.communicate()
         if logger:
             logger.debug(f"objdump: timeout ({timeout} seconds)")
         return
@@ -47,10 +54,12 @@ class PyPackerDetect:
             'packers_json': os.path.abspath(packers_json) if packers_json is not None else _p("packers.json"),
             'sections_json': os.path.abspath(sections_json) if sections_json is not None else _p("sections.json"),
         }
-        logger.debug(f"JSON with common packer section names: {self.__config['packers_json']}")
+        if logger:
+            logger.debug(f"JSON with common packer section names: {self.__config['packers_json']}")
         with open(self.__config['packers_json']) as f:
             self.__config['packers_json'] = json.load(f)['packers']
-        logger.debug(f"JSON with known section names: {self.__config['sections_json']}")
+        if logger:
+            logger.debug(f"JSON with known section names: {self.__config['sections_json']}")
         with open(self.__config['sections_json']) as f:
             self.__config['sections_json'] = json.load(f)['sections']
         self.__thresholds = {
@@ -61,30 +70,44 @@ class PyPackerDetect:
         self.logger = logger
     
     def detect(self, pe):
-        """ Analyze the input PE file for suspicions and/or detections of packers. """
-        r, s = {'detections': [], 'suspicions': []}, .0
-        def __add(i, msg):
-            if self.logger:
-                self.logger.debug("%s:%s" % (['DETECTION', 'SUSPICION'][i], msg))
-            r[['detections', 'suspicions'][i]].append(msg)
+        """ Analyze the input PE file (path or pefile.PE instance) for suspicions and/or detections of packers. """
         if not isinstance(pe, PE):
             path = pe
             pe = PE(path)
             pe.path = path
+        if getattr(pe, "path", None) is None:
+            # a PE instance parsed from a buffer has no path while PEiD and objdump work on files ; use a temporary copy
+            from tempfile import NamedTemporaryFile
+            with NamedTemporaryFile(suffix=".exe", delete=False) as f:
+                f.write(pe.__data__)
+            pe.path = f.name
+            try:
+                return self.detect(pe)
+            finally:
+                pe.path = None
+                os.remove(f.name)
+        r = {'detections': [], 'suspicions': []}
+        def __add(i, msg):
+            if self.logger:
+                self.logger.debug("%s:%s" % (['DETECTION', 'SUSPICION'][i], msg))
+            r[['detections', 'suspicions'][i]].append(msg)
         ep = pe.OPTIONAL_HEADER.AddressOfEntryPoint
         # parse the input PE file
         d = {'all': [], 'bad': [], 'ep': [], 'packer': [], 'unknown': []}
         for i, s in enumerate(pe.sections):
             try:
-                n = s.Name.decode("ascii").strip().rstrip("\0")
+                n = s.Name.decode("ascii").strip().rstrip("\0 ")
                 # special case: for some executables compiled with debug information, some sections may be named with
                 #                the format "/[N]" where N is the offset in the string table ; in this case, we compute
                 #                the real section names and map them to the shortened ones to compare the relevant names
                 #                with the database of known section names
-                if re.match(r"^\/\d+$", n) and (rsn := _real_section_names(pe.path, logger=self.logger)):
+                if re.match(r"^\/\d+$", n) and (rsn := _real_section_names(pe.path, logger=self.logger)) and \
+                   i < len(rsn):
                     n = rsn[i]
                 d['all'].append(n)
-                if ep >= s.VirtualAddress and ep <= (s.VirtualAddress + s.Misc_VirtualSize):
+                # the loader uses SizeOfRawData when VirtualSize is null ; the upper bound is excluded as it is the start
+                #  of the next section for contiguous sections
+                if s.VirtualAddress <= ep < s.VirtualAddress + (s.Misc_VirtualSize or s.SizeOfRawData):
                     d['ep'].append(n)
                 if n not in self.__config['sections_json']['known']:
                     d['unknown'].append(n)
@@ -93,7 +116,7 @@ class PyPackerDetect:
                 if p is not None and n not in self.__config['sections_json']['known']:
                     d['packer'].append(n)
             except UnicodeDecodeError:
-                d['bad'].append(s.Name.decode('latin1').strip().rstrip("\0"))
+                d['bad'].append(s.Name.decode('latin1').strip().rstrip("\0 "))
                 __add(1, "Section name with invalid characters")
         # bad entry point sections
         __intersect = lambda l1, l2: len(set(l1).intersection(l2)) > 0
@@ -103,7 +126,7 @@ class PyPackerDetect:
                 __add(1, "Null entry point")
             l_ep = len(d['ep'])
             if l_ep == 0:
-                __add(0, "Entry point 0x%x falls in overlapping sections: '%s'" % (ep, ep_sec_list))
+                __add(0, "Entry point 0x%x does not fall in any section" % ep)
             else:
                 if l_ep > 1:
                     __add(0, "Entry point 0x%x falls in overlapping sections: '%s'" % (ep, ep_sec_list))
@@ -126,11 +149,11 @@ class PyPackerDetect:
             c = 0
             try:
                 for lib in pe.DIRECTORY_ENTRY_IMPORT:
-                    if lib.dll.decode("ascii").strip().rstrip("\0").lower() == "mscoree.dll":
+                    if lib.dll.decode("latin-1").strip().rstrip("\0").lower() == "mscoree.dll":
                         c = -1  # .NET assembly, counting imports is misleading as they will have a low number
                         break
                     c += len(lib.imports)
-            except AttributeError as e:
+            except AttributeError:  # no import directory
                 pass
             if (0 <= c <= self.__thresholds['imports']):
                 __add(0, "Too few imports (total: %d)" % c)
